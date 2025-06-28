@@ -1,99 +1,81 @@
 import { useState } from "react";
-import { Textarea } from "./Textarea";
-import { Button } from "./Button";
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr || dateStr.trim() === "") return "없음";
-
-  const parts = dateStr.includes("-")
-    ? dateStr.split("-")
-    : dateStr.includes("/")
-    ? dateStr.split("/")
-    : [];
-
-  if (parts.length !== 3) return "없음";
-
-  const [, month, day] = parts;
-  return `${month}/${day}`;
-}
-
-export default function NotionToTextFormatter() {
+function App() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
 
   const handleConvert = () => {
     const lines = input.trim().split("\n");
-    if (lines.length < 1) return;
-
-    const defaultHeaders = ["업무유형", "타이틀", "완료일", "라이브일"];
-    const firstLine = lines[0].split("\t").map((h) => h.trim());
-    const hasHeaders =
-      firstLine.includes("업무유형") || firstLine.includes("타이틀");
-
-    const headers = hasHeaders ? firstLine : defaultHeaders;
-    const dataStartIndex = hasHeaders ? 1 : 0;
-
-    const idx = {
-      type: headers.indexOf("업무유형"),
-      title: headers.indexOf("타이틀"),
-      done: headers.indexOf("완료일"),
-      live: headers.indexOf("라이브일"),
-    };
-
-    if (Object.values(idx).some((i) => i === -1)) {
-      setOutput(
-        "⚠️ '업무유형', '타이틀', '완료일', '라이브일' 열이 필요합니다."
-      );
-      return;
-    }
-
     const qaItems: string[] = [];
     const personalItems: string[] = [];
 
-    for (let i = dataStartIndex; i < lines.length; i++) {
-      const cols = lines[i].split("\t");
-      const type = cols[idx.type]?.trim();
-      const title = cols[idx.title]?.trim();
-      const done = cols[idx.done]?.trim();
-      const live = cols[idx.live]?.trim();
+    const getFormattedDate = (dateStr: string): string => {
+      if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "없음";
+      const [, month, day] = dateStr.split("/");
+      return `${Number(month)}/${Number(day)}`;
+    };
+
+    for (const line of lines) {
+      const cols = line.split("\t");
+      if (cols.length < 2) continue;
+
+      const workType = cols[0]?.trim();
+      const title = cols[1]?.trim();
+      const done = cols[2]?.trim();
+      const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      if (!type) {
-        const date = formatDate(live || done);
-        qaItems.push(`- ${title} (라이브일: ${date})`);
+      if (!workType || workType.trim() === "") {
+        const date = getFormattedDate(live);
+        qaItems.push(`- ${title} (배포: ${date})`);
       } else {
-        const date = formatDate(done || live);
-        personalItems.push(`- [${type}] ${title} (목표일: ${date})`);
+        const date = getFormattedDate(done);
+        personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
       }
     }
 
-    const result = [
-      "<QA 업무>",
-      ...qaItems,
-      "",
-      "<개인업무>",
-      ...personalItems,
-    ].join("\n");
+    const resultParts: string[] = [];
 
-    setOutput(result);
+    if (qaItems.length > 0) {
+      resultParts.push("<QA 업무>");
+      resultParts.push(...qaItems);
+      resultParts.push("");
+    }
+
+    if (personalItems.length > 0) {
+      resultParts.push("<개인업무>");
+      resultParts.push(...personalItems);
+    }
+
+    setOutput(resultParts.join("\n"));
   };
 
   return (
-    <div className="grid gap-4 p-4">
-      <Textarea
-        placeholder="노션에서 복사한 표를 여기에 붙여넣으세요 (첫 줄은 헤더가 없을 수도 있음)"
+    <div style={{ padding: "1rem" }}>
+      <p style={{ fontSize: "0.9rem", color: "#666" }}>
+        ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여
+        복사해 주세요.
+      </p>
+      <textarea
+        placeholder="여기에 노션 표 데이터를 붙여넣기 해주세요"
         rows={10}
+        style={{ width: "100%", marginBottom: "1rem" }}
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
-      <Button onClick={handleConvert}>변환하기</Button>
-      <Textarea
-        placeholder="결과가 여기에 표시됩니다"
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <button onClick={handleConvert}>변환하기</button>
+      </div>
+      <textarea
+        placeholder="변환된 결과가 여기에 표시됩니다"
         rows={10}
+        style={{ width: "100%", marginTop: "1rem" }}
         value={output}
         readOnly
       />
     </div>
   );
 }
+
+export default App;
