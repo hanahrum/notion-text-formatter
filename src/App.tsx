@@ -19,20 +19,20 @@ function App() {
       const cols = line.split("\t");
       if (cols.length < 2) continue;
 
-      const rawWorkType = cols[0] ?? "";
-      const workType = rawWorkType.trim(); // 공백 제거
+      const workType = cols[0]?.trim();
       const title = cols[1]?.trim();
       const done = cols[2]?.trim();
       const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      if (!workType) {
-        // 업무유형이 비어있거나 공백 → QA 업무
+      // 모든 공백 제거 후 검사
+      const cleanWorkType = (workType || "").replace(/\s/g, "");
+
+      if (!cleanWorkType) {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else {
-        // 업무유형이 존재 → 개인업무
         const date = getFormattedDate(done);
         personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
       }
@@ -57,8 +57,7 @@ function App() {
   return (
     <div style={{ padding: "1rem" }}>
       <p style={{ fontSize: "0.9rem", color: "#666" }}>
-        ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여
-        복사해 주세요.
+        ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여 복사해 주세요.
       </p>
       <textarea
         placeholder="여기에 노션 표 데이터를 붙여넣기 해주세요"
