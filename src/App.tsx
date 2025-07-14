@@ -19,17 +19,20 @@ function App() {
       const cols = line.split("\t");
       if (cols.length < 2) continue;
 
-      const workType = cols[0]?.trim();
+      const rawWorkType = cols[0] ?? "";
+      const workType = rawWorkType.trim(); // 공백 제거
       const title = cols[1]?.trim();
       const done = cols[2]?.trim();
       const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      if (!workType || workType.trim() === "") {
+      if (!workType) {
+        // 업무유형이 비어있거나 공백 → QA 업무
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else {
+        // 업무유형이 존재 → 개인업무
         const date = getFormattedDate(done);
         personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
       }
