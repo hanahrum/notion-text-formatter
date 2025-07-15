@@ -122,7 +122,7 @@ function App() {
           color: output ? "#000" : "#aaa",
         }}
       >
-        {output || "변환된 결과가 여기에 표시됩니다 (클릭 시 복사됩니다)"}
+        {output || "변환된 결과가 여기에 표시됩니다"}
       </div>
     </div>
   );
