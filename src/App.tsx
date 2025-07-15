@@ -19,22 +19,23 @@ function App() {
       const cols = line.split("\t");
       if (cols.length < 2) continue;
 
-      const workType = cols[0]?.trim();
+      const workType = cols[0] || "";
       const title = cols[1]?.trim();
       const done = cols[2]?.trim();
       const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      // 모든 공백 제거 후 검사
-      const cleanWorkType = (workType || "").replace(/\s/g, "");
+      const cleanWorkType = workType
+        .replace(/[\s\u200B-\u200D\uFEFF]/g, "")
+        .toLowerCase();
 
       if (!cleanWorkType) {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else {
         const date = getFormattedDate(done);
-        personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
+        personalItems.push(`- [${workType.trim()}] ${title} (목표일: ${date})`);
       }
     }
 
@@ -51,13 +52,25 @@ function App() {
       resultParts.push(...personalItems);
     }
 
-    setOutput(resultParts.join("\n"));
+    const resultText = resultParts.join("\n");
+    setOutput(resultText);
+
+    // 클립보드에 복사
+    navigator.clipboard.writeText(resultText).then(
+      () => {
+        console.log("클립보드에 복사되었습니다.");
+      },
+      (err) => {
+        console.error("클립보드 복사 실패:", err);
+      }
+    );
   };
 
   return (
     <div style={{ padding: "1rem" }}>
       <p style={{ fontSize: "0.9rem", color: "#666" }}>
-        ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여 복사해 주세요.
+        ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여
+        복사해 주세요.
       </p>
       <textarea
         placeholder="여기에 노션 표 데이터를 붙여넣기 해주세요"
@@ -67,7 +80,7 @@ function App() {
         onChange={(e) => setInput(e.target.value)}
       />
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <button onClick={handleConvert}>변환하기</button>
+        <button onClick={handleConvert}>변환 및 복사</button>
       </div>
       <textarea
         placeholder="변환된 결과가 여기에 표시됩니다"
