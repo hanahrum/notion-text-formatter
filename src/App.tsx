@@ -47,23 +47,25 @@ function App() {
       const cols = line.split("\t");
       if (cols.length < 2) continue;
 
-      const workType = cols[0] || "";
+      const workTypeRaw = cols[0] || "";
+      const workTypeClean = workTypeRaw
+        .replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, "")
+        .toLowerCase();
+
       const title = cols[1]?.trim();
       const done = cols[2]?.trim();
       const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      const cleanWorkType = workType
-        .replace(/[\s\u200B-\u200D\uFEFF]/g, "")
-        .toLowerCase();
-
-      if (!cleanWorkType) {
+      if (!workTypeClean) {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else {
         const date = getFormattedDate(done);
-        personalItems.push(`- [${workType.trim()}] ${title} (목표일: ${date})`);
+        personalItems.push(
+          `- [${workTypeRaw.trim()}] ${title} (목표일: ${date})`
+        );
       }
     }
 
@@ -117,7 +119,7 @@ function App() {
           border: "1px solid #ccc",
           borderRadius: "4px",
           marginTop: "1rem",
-          cursor: "pointer",
+          cursor: output ? "pointer" : "default",
           minHeight: "150px",
           color: output ? "#000" : "#aaa",
         }}
