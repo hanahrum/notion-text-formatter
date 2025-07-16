@@ -40,6 +40,7 @@ function App() {
 
   const handleConvert = () => {
     const lines = input.trim().split("\n");
+    const meetingItems: string[] = [];
     const qaItems: string[] = [];
     const personalItems: string[] = [];
 
@@ -59,9 +60,15 @@ function App() {
       if (!title) continue;
 
       if (!workTypeClean) {
+        // 업무유형이 없는 경우 → QA 업무
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
+      } else if (workTypeClean === "회의") {
+        // 업무유형이 '회의' → 회의
+        const date = getFormattedDate(done);
+        meetingItems.push(`- [${workTypeRaw.trim()}] ${title} (목표일: ${date})`);
       } else {
+        // 나머지 → 개인업무
         const date = getFormattedDate(done);
         personalItems.push(
           `- [${workTypeRaw.trim()}] ${title} (목표일: ${date})`
@@ -70,6 +77,12 @@ function App() {
     }
 
     const resultParts: string[] = [];
+
+    if (meetingItems.length > 0) {
+      resultParts.push("<회의>");
+      resultParts.push(...meetingItems);
+      resultParts.push("");
+    }
 
     if (qaItems.length > 0) {
       resultParts.push("<QA 업무>");
@@ -124,7 +137,7 @@ function App() {
           color: output ? "#000" : "#aaa",
         }}
       >
-        {output || "변환된 결과가 여기에 표시됩니다"}
+        {output || "변환된 결과가 여기에 표시됩니다 (클릭 시 복사됩니다)"}
       </div>
     </div>
   );
