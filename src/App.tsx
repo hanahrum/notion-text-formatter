@@ -4,104 +4,66 @@ function App() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
 
-  const getFormattedDate = (dateStr: string): string => {
-    if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "없음";
-    const [, month, day] = dateStr.split("/");
+  const extractTime = (str: string): string => {
+    const match = str.match(/(오전|오후)\s\d{1,2}:\d{2}/);
+    return match ? match[0] : "시간없음";
+  };
+
+  const getFormattedDate = (str: string): string => {
+    if (!str || !/\d{4}\/\d{2}\/\d{2}/.test(str)) return "없음";
+    const [, month, day] = str.split("/");
     return `${Number(month)}/${Number(day)}`;
-  };
-
-  const copyToClipboard = (text: string) => {
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(
-        () => alert("클립보드에 복사되었습니다!"),
-        () => fallbackCopy(text)
-      );
-    } else {
-      fallbackCopy(text);
-    }
-  };
-
-  const fallbackCopy = (text: string) => {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    try {
-      document.execCommand("copy");
-      alert("클립보드에 복사되었습니다!");
-    } catch {
-      alert("클립보드 복사 실패 😢");
-    }
-    document.body.removeChild(textarea);
   };
 
   const handleConvert = () => {
     const lines = input.trim().split("\n");
-    const meetingItems: string[] = [];
-    const qaItems: string[] = [];
-    const personalItems: string[] = [];
+
+    const meetings: string[] = [];
+    const qa: string[] = [];
+    const personal: string[] = [];
 
     for (const line of lines) {
-      const cols = line.split("\t");
+      const cols = line.split("\t").map(c => c.trim());
       if (cols.length < 2) continue;
 
-      const workTypeRaw = cols[0] || "";
-      const workTypeClean = workTypeRaw
-        .replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, "")
-        .toLowerCase();
-
-      const title = cols[1]?.trim();
-      const done = cols[2]?.trim();
-      const live = cols[3]?.trim();
+      const workType = cols[0] || "";
+      const title = cols[1] || "";
+      const dateCol = cols.find(c => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || "";
+      const done = cols[2] || "";
+      const live = cols[3] || "";
 
       if (!title) continue;
 
-      if (!workTypeClean) {
-        // 업무유형이 없는 경우 → QA 업무
-        const date = getFormattedDate(live);
-        qaItems.push(`- ${title} (배포: ${date})`);
-      } else if (workTypeClean === "회의") {
-        // 업무유형이 '회의' → 회의
-        const date = getFormattedDate(done);
-        meetingItems.push(`- [${workTypeRaw.trim()}] ${title} (목표일: ${date})`);
+      if (!workType) {
+        qa.push(`- ${title} (배포: ${getFormattedDate(live)})`);
+      } else if (workType.replace(/\s/g, "") === "회의") {
+        meetings.push(`- [회의] ${title} (${extractTime(dateCol)})`);
       } else {
-        // 나머지 → 개인업무
-        const date = getFormattedDate(done);
-        personalItems.push(
-          `- [${workTypeRaw.trim()}] ${title} (목표일: ${date})`
+        personal.push(
+          `- [${workType}] ${title} (목표일: ${getFormattedDate(done)})`
         );
       }
     }
 
-    const resultParts: string[] = [];
-
-    if (meetingItems.length > 0) {
-      resultParts.push("<회의>");
-      resultParts.push(...meetingItems);
-      resultParts.push("");
+    const result: string[] = [];
+    if (meetings.length > 0) {
+      result.push("<회의>");
+      result.push(...meetings, "");
+    }
+    if (qa.length > 0) {
+      result.push("<QA 업무>");
+      result.push(...qa, "");
+    }
+    if (personal.length > 0) {
+      result.push("<개인업무>");
+      result.push(...personal);
     }
 
-    if (qaItems.length > 0) {
-      resultParts.push("<QA 업무>");
-      resultParts.push(...qaItems);
-      resultParts.push("");
-    }
-
-    if (personalItems.length > 0) {
-      resultParts.push("<개인업무>");
-      resultParts.push(...personalItems);
-    }
-
-    const resultText = resultParts.join("\n");
-    setOutput(resultText);
-    copyToClipboard(resultText);
+    setOutput(result.join("\n"));
   };
 
   return (
-    <div style={{ padding: "1rem", fontFamily: "sans-serif" }}>
+    <div style={{ padding: "1rem" }}>
       <p style={{ fontSize: "0.9rem", color: "#666" }}>
         ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여
         복사해 주세요.
@@ -115,30 +77,25 @@ function App() {
         onChange={(e) => setInput(e.target.value)}
       />
 
-      <div style={{ display: "flex", justifyContent: "center" }}>
+      <div style={{ textAlign: "center" }}>
         <button onClick={handleConvert}>변환 및 복사</button>
       </div>
 
-      <div
-        onClick={() => {
-          if (output) {
-            copyToClipboard(output);
-          }
-        }}
+      <textarea
+        placeholder="결과가 여기에 표시됩니다"
+        rows={10}
         style={{
-          whiteSpace: "pre-wrap",
-          background: "#f9f9f9",
-          padding: "1rem",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
+          width: "100%",
           marginTop: "1rem",
-          cursor: output ? "pointer" : "default",
-          minHeight: "150px",
-          color: output ? "#000" : "#aaa",
+          whiteSpace: "pre-wrap",
         }}
-      >
-        {output || "변환된 결과가 여기에 표시됩니다 (클릭 시 복사됩니다)"}
-      </div>
+        value={output}
+        readOnly
+        onClick={() => {
+          navigator.clipboard.writeText(output);
+          alert("복사되었습니다!");
+        }}
+      />
     </div>
   );
 }
