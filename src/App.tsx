@@ -63,16 +63,18 @@ function App() {
 
       if (!title) continue;
 
-      if (!workType || workType === "") {
-        const date = getFormattedDate(live);
-        qaItems.push(`- ${title} (배포: ${date})`);
-      } else if (workType === "회의") {
+      const normalizedType = (workType || "").toUpperCase();
+
+      if (normalizedType === "회의") {
         const time = extractTime(cols.find(c => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || "");
         if (time) {
           meetings.push(`- ${title} (${time})`);
         } else {
           meetings.push(`- ${title}`);
         }
+      } else if (normalizedType === "JIRA" || normalizedType === "QMS" || !workType) {
+        const date = getFormattedDate(live);
+        qaItems.push(`- ${title} (배포: ${date})`);
       } else {
         const date = getFormattedDate(done);
         personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
