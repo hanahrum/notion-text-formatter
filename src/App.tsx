@@ -4,22 +4,53 @@ function App() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
 
+  const getFormattedDate = (dateStr: string): string => {
+    if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "없음";
+    const [, month, day] = dateStr.split("/");
+    return `${Number(month)}/${Number(day)}`;
+  };
+
+  const extractTime = (str: string): string => {
+    const match = str.match(/(오전|오후)\s\d{1,2}:\d{2}/);
+    return match ? match[0] : "";
+  };
+
+  const copyToClipboard = (text: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          alert("변환된 결과가 클립보드에 복사되었습니다.");
+        })
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed"; // iOS 대응
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand("copy");
+      alert("변환된 결과가 클립보드에 복사되었습니다.");
+    } catch {
+      alert("클립보드 복사에 실패했습니다.");
+    }
+    document.body.removeChild(textarea);
+  };
+
   const handleConvert = () => {
     const lines = input.trim().split("\n");
+
     const meetings: string[] = [];
     const qaItems: string[] = [];
     const personalItems: string[] = [];
-
-    const getFormattedDate = (dateStr: string): string => {
-      if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "없음";
-      const [, month, day] = dateStr.split("/");
-      return `${Number(month)}/${Number(day)}`;
-    };
-
-    const extractTime = (str: string): string => {
-      const match = str.match(/(오전|오후)\s\d{1,2}:\d{2}/);
-      return match ? match[0] : "";
-    };
 
     for (const line of lines) {
       const cols = line.split("\t");
@@ -36,7 +67,7 @@ function App() {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else if (workType === "회의") {
-        const time = extractTime(cols[2] || cols[3] || "");
+        const time = extractTime(cols.find(c => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || "");
         if (time) {
           meetings.push(`- ${title} (${time})`);
         } else {
@@ -68,16 +99,7 @@ function App() {
     const result = resultParts.join("\n");
     setOutput(result);
 
-    // 클립보드 복사
-    navigator.clipboard
-      .writeText(result)
-      .then(() => {
-        alert("변환된 결과가 클립보드에 복사되었습니다.");
-      })
-      .catch((err) => {
-        console.error("클립보드 복사 실패:", err);
-        alert("클립보드 복사에 실패했습니다.");
-      });
+    copyToClipboard(result);
   };
 
   return (
@@ -86,6 +108,7 @@ function App() {
         ※ 노션 표 복사 시, 헤더(첫 줄)가 포함되지 않도록 내용만 드래그하여
         복사해 주세요.
       </p>
+
       <textarea
         placeholder="여기에 노션 표 데이터를 붙여넣기 해주세요"
         rows={10}
@@ -93,13 +116,15 @@ function App() {
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
+
       <div style={{ display: "flex", justifyContent: "center" }}>
         <button onClick={handleConvert}>변환 및 복사</button>
       </div>
+
       <textarea
         placeholder="변환된 결과가 여기에 표시됩니다"
         rows={10}
-        style={{ width: "100%", marginTop: "1rem" }}
+        style={{ width: "100%", marginTop: "1rem", whiteSpace: "pre-wrap" }}
         value={output}
         readOnly
       />
