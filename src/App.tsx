@@ -31,7 +31,7 @@ function App() {
   const fallbackCopy = (text: string) => {
     const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.style.position = "fixed"; // iOS 대응
+    textarea.style.position = "fixed";
     textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.focus();
@@ -51,51 +51,60 @@ function App() {
     const meetings: string[] = [];
     const qaItems: string[] = [];
     const personalItems: string[] = [];
+    const noTypeItems: string[] = [];
 
     for (const line of lines) {
       const cols = line.split("\t");
       if (cols.length < 2) continue;
 
-      const workType = cols[0]?.trim();
+      const workTypeRaw = cols[0]?.trim();
       const title = cols[1]?.trim();
       const done = cols[2]?.trim();
       const live = cols[3]?.trim();
 
       if (!title) continue;
 
-      const normalizedType = (workType || "").toUpperCase();
+      const normalizedType = (workTypeRaw || "").toUpperCase();
 
-      if (normalizedType === "회의") {
-        const time = extractTime(cols.find(c => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || "");
+      if (!workTypeRaw || normalizedType === "") {
+        noTypeItems.push(`- ${title}`);
+      } else if (normalizedType === "회의") {
+        const time = extractTime(
+          cols.find((c) => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || ""
+        );
         if (time) {
           meetings.push(`- ${title} (${time})`);
         } else {
           meetings.push(`- ${title}`);
         }
-      } else if (normalizedType === "JIRA" || normalizedType === "QMS" || !workType) {
+      } else if (normalizedType === "JIRA" || normalizedType === "QMS") {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
       } else {
         const date = getFormattedDate(done);
-        personalItems.push(`- [${workType}] ${title} (목표일: ${date})`);
+        personalItems.push(`- [${workTypeRaw}] ${title} (목표일: ${date})`);
       }
     }
 
     const resultParts: string[] = [];
 
     if (meetings.length > 0) {
-      resultParts.push("<회의>");
+      resultParts.push("[회의]");
       resultParts.push(...meetings, "");
     }
 
     if (qaItems.length > 0) {
-      resultParts.push("<QA 업무>");
+      resultParts.push("[QA 업무]");
       resultParts.push(...qaItems, "");
     }
 
     if (personalItems.length > 0) {
-      resultParts.push("<개인업무>");
-      resultParts.push(...personalItems);
+      resultParts.push("[개인업무]");
+      resultParts.push(...personalItems, "");
+    }
+
+    if (noTypeItems.length > 0) {
+      resultParts.push(...noTypeItems);
     }
 
     const result = resultParts.join("\n");
