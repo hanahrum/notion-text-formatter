@@ -11,8 +11,9 @@ function App() {
   };
 
   const extractTime = (str: string): string => {
-    const match = str.match(/(오전|오후)\s\d{1,2}:\d{2}/);
-    return match ? match[0] : "";
+    // 오전 9:00, 오후 13:00 등을 추출
+    const match = str.match(/(오전|오후)\s?\d{1,2}:\d{2}/);
+    return match ? match[0].replace(/\s+/, "") : ""; // 공백 제거
   };
 
   const copyToClipboard = (text: string) => {
@@ -69,14 +70,11 @@ function App() {
       if (!workTypeRaw || normalizedType === "") {
         noTypeItems.push(`- ${title}`);
       } else if (normalizedType === "회의") {
-        const time = extractTime(
-          cols.find((c) => /(오전|오후)\s\d{1,2}:\d{2}/.test(c)) || ""
+        const timeCandidate = cols.find((c) =>
+          /(오전|오후)\s?\d{1,2}:\d{2}/.test(c)
         );
-        if (time) {
-          meetings.push(`- ${title} (${time})`);
-        } else {
-          meetings.push(`- ${title}`);
-        }
+        const time = timeCandidate ? extractTime(timeCandidate) : "";
+        meetings.push(time ? `- ${title} (${time})` : `- ${title}`);
       } else if (normalizedType === "JIRA" || normalizedType === "QMS") {
         const date = getFormattedDate(live);
         qaItems.push(`- ${title} (배포: ${date})`);
@@ -109,7 +107,6 @@ function App() {
 
     const result = resultParts.join("\n");
     setOutput(result);
-
     copyToClipboard(result);
   };
 
