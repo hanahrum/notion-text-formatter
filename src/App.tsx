@@ -5,7 +5,7 @@ function App() {
   const [output, setOutput] = useState("");
 
   const getFormattedDate = (dateStr: string): string => {
-    if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "없음";
+    if (!dateStr || !/\d{4}\/\d{2}\/\d{2}/.test(dateStr)) return "미정";
     const [, month, day] = dateStr.split("/");
     return `${Number(month)}/${Number(day)}`;
   };
