@@ -4,42 +4,44 @@ function App() {
 	const [input, setInput] = useState("");
 	const [output, setOutput] = useState("");
 
-	// 날짜(필수) + 시간(옵션)을 안전하게 파싱해 "M/D" 또는 "M/D HH:mm|오전 HH:mm"으로 반환
-	const getFormattedDate = (dateStr: string, includeTime = false): string => {
+	// 날짜 문자열에서 "월/일"만 안전하게 추출
+	// 지원: 2025/11/21, 2025-11-21, 2025.11.21, 2025년 11월 21일
+	// 뒤에 시간(오전/오후 HH:mm, HH:mm, (UTC) 등)이 붙어도 무시
+	const getFormattedDate = (dateStr: string): string => {
 		if (!dateStr) return "미정";
 		const s = dateStr.trim();
 
-		// YYYY/MM/DD | YYYY-MM-DD | YYYY.MM.DD
-		let md = s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
-		// 한국어: YYYY년 M월 D일
-		if (!md) {
-			const kr = s.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
-			if (kr) md = [kr[0], kr[1], kr[2], kr[3]] as unknown as RegExpMatchArray;
-		}
-		if (!md) return "미정";
+		// 1) YYYY/MM/DD | YYYY-MM-DD | YYYY.MM.DD
+		let m = s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
 
-		const month = Number(md[2]);
-		const day = Number(md[3]);
+		// 2) 한국어: YYYY년 M월 D일
+		if (!m) {
+			const kr = s.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+			if (kr) {
+				// m[2] → month, m[3] → day 와 동일한 인덱스 배열을 구성
+				m = [kr[0], kr[1], kr[2], kr[3]] as unknown as RegExpMatchArray;
+			}
+		}
+
+		if (!m) return "미정";
+
+		const month = Number(m[2]);
+		const day = Number(m[3]);
 		if (!Number.isFinite(month) || !Number.isFinite(day)) return "미정";
 
-		const base = `${month}/${day}`;
-		if (!includeTime) return base;
-
-		// 시간이 있으면 붙이고, 없으면 날짜만
-		const t = extractTime(s);
-		return t ? `${base} ${t}` : base;
+		return `${month}/${day}`; // 시간은 무시하고 M/D만 반환
 	};
 
-	// "오전/오후 HH:mm" 또는 "HH:mm" 추출. (UTC) 등의 괄호 텍스트는 제거
 	const extractTime = (str: string): string => {
 		if (!str) return "";
-		const cleaned = str.replace(/\(.*?\)/g, " "); // (UTC), (KST) 등 제거
 		// 1) 오전/오후 hh:mm
-		let m = cleaned.match(/(오전|오후)\s*\d{1,2}:\d{2}/);
-		if (m) return m[0].replace(/\s+/, " ");
+		let match = str.match(/(오전|오후)\s?\d{1,2}:\d{2}/);
+		if (match) return match[0].replace(/\s?/, " ");
+
 		// 2) 24시간 hh:mm
-		m = cleaned.match(/\b\d{1,2}:\d{2}\b/);
-		if (m) return m[0];
+		match = str.match(/\b\d{1,2}:\d{2}\b/);
+		if (match) return match[0];
+
 		return "";
 	};
 
@@ -74,6 +76,7 @@ function App() {
 	};
 
 	const handleConvert = () => {
+		// \r 제거로 줄바꿈 혼재 대응
 		const lines = input.replace(/\r/g, "").trim().split("\n");
 
 		const meetings: string[] = [];
@@ -96,26 +99,18 @@ function App() {
 
 			if (!workTypeRaw || normalizedType === "") {
 				noTypeItems.push(`- ${title}`);
-
 			} else if (normalizedType === "회의") {
-				// 한글 날짜가 들어간 케이스도 감지하도록 패턴 보강
 				const timeSource =
-					cols.find(
-						(c) =>
-							/(오전|오후|\b\d{1,2}:\d{2}\b)/.test(c) ||
-							/년\s*\d{1,2}\s*월\s*\d{1,2}\s*일/.test(c)
-					) || "";
+					cols.find((c) => /(오전|오후|\d{1,2}:\d{2})/.test(c)) || "";
 				const time = extractTime(timeSource);
 				meetings.push(time ? `- ${title} (${time})` : `- ${title}`);
-
 			} else if (normalizedType === "JIRA" || normalizedType === "QMS") {
-				// 라이브일에 시간까지 있으면 함께 표시, 없으면 날짜만
-				const date = getFormattedDate(live, true);
+				// 라이브일에서 월/일만
+				const date = getFormattedDate(live);
 				qaItems.push(`- ${title} (배포: ${date})`);
-
 			} else {
-				// 개인업무: 목표일만 표시
-				const date = getFormattedDate(done, false);
+				// 개인업무: 목표일에서 월/일만
+				const date = getFormattedDate(done);
 				personalItems.push(`- [${workTypeRaw}] ${title} (목표일: ${date})`);
 			}
 		}
